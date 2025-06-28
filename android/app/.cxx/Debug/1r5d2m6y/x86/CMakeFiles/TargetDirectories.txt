@@ -1,0 +1,2 @@
+/home/crigs/GitHub/nerds/android/app/.cxx/Debug/1r5d2m6y/x86/CMakeFiles/edit_cache.dir
+/home/crigs/GitHub/nerds/android/app/.cxx/Debug/1r5d2m6y/x86/CMakeFiles/rebuild_cache.dir

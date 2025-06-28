@@ -1,0 +1,33 @@
+# Fluff
+REFACTORING_PLAN.md
+guides/
+
+
+# Flutter/Dart/Pub related
+.dart_tool/
+.flutter-plugins
+.flutter-plugins-dependencies
+.packages
+.pub-cache/
+build/
+.melpa
+# Android
+android/.gradle/
+android/app/build/
+# iOS/macOS
+ios/Pods/
+ios/Flutter/Flutter.framework
+ios/Flutter/Flutter.podspec
+ios/Runner.xcworkspace/
+ios/Runner.xcuserdatad/
+macos/Pods/
+macos/build/
+# VS Code
+.vscode/
+# IntelliJ
+.idea/
+# Xcode
+*.xcuserstate
+*.xcuserdata/
+# Others
+.metadata
