@@ -7,9 +7,9 @@ plugins {
 }
 
 android {
-    namespace = "com.example.nerds"
+    namespace = "com.crigs.nerds_stickers"
     compileSdk = flutter.compileSdkVersion
-    ndkVersion "26.1.10909125"
+    ndkVersion "27.0.12077973"
 
 
     compileOptions {
@@ -26,7 +26,7 @@ android {
         applicationId = "com.crigs.nerds_stickers"
         // You can update the following values to match your application needs.
         // For more information, see: https://flutter.dev/to/review-gradle-config.
-        minSdkVersion = 21
+        minSdkVersion = flutter.minSdkVersion
         targetSdk = flutter.targetSdkVersion
         versionCode = flutter.versionCode
         versionName = flutter.versionName

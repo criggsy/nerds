@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:nerds/Widgets/add_sticker_to_user_pack_sheet.dart';
 import 'package:nerds/Widgets/drawer.dart';
 import 'package:nerds/constants/constants.dart';
 import 'package:nerds/models/sticker_data.dart';
@@ -11,7 +12,13 @@ import 'package:nerds/utils/logger.dart';
 
 class StickerPackInfoScreen extends StatefulWidget {
   static const routeName = '/sticker-pack-info';
-  const StickerPackInfoScreen({super.key});
+
+  final StickerPacks stickerPack;
+
+  const StickerPackInfoScreen({
+    super.key,
+    required this.stickerPack,
+  });
 
   @override
   State<StickerPackInfoScreen> createState() => _StickerPackInfoScreenState();
@@ -20,27 +27,26 @@ class StickerPackInfoScreen extends StatefulWidget {
 class _StickerPackInfoScreenState extends State<StickerPackInfoScreen> {
   bool _isInstalling = false;
 
-  Future<void> addStickerPack(StickerPacks stickerPack) async {
+  Future<void> addStickerPack(StickerPacks pack) async {
     setState(() => _isInstalling = true);
 
     final handler = WhatsappStickersHandler();
-    final (stickers, trayImage) =
-        await downloadStickersAndTrayImage(stickerPack);
+    final (stickers, trayImage) = await downloadStickersAndTrayImage(pack);
 
     String? result;
 
     try {
       result = await handler.addStickerPack(
-        stickerPack.identifier ?? 'unknown',
-        stickerPack.name ?? '',
-        stickerPack.publisher ?? '',
+        pack.identifier ?? 'unknown',
+        pack.name ?? '',
+        pack.publisher ?? '',
         trayImage,
-        stickerPack.publisherWebsite,
-        stickerPack.privacyPolicyWebsite,
-        stickerPack.licenseAgreementWebsite,
-        stickerPack.animatedStickerPack ?? false,
+        pack.publisherWebsite,
+        pack.privacyPolicyWebsite,
+        pack.licenseAgreementWebsite,
+        pack.animatedStickerPack ?? false,
         stickers,
-        imageDataVersion: stickerPack.imageDataVersion ?? '1.0',
+        imageDataVersion: pack.imageDataVersion ?? '1.0',
       );
     } on WhatsappStickersException catch (e) {
       if (e.cause == 'Sticker pack already added') {
@@ -68,16 +74,7 @@ class _StickerPackInfoScreenState extends State<StickerPackInfoScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final args =
-        ModalRoute.of(context)?.settings.arguments as Map<String, dynamic>?;
-    final stickerPack = args?['stickerPack'] as StickerPacks?;
-
-    if (stickerPack == null) {
-      return Scaffold(
-        appBar: AppBar(title: const Text('Sticker Pack Info')),
-        body: const Center(child: Text('❌ No sticker pack info available')),
-      );
-    }
+    final stickerPack = widget.stickerPack;
 
     return Scaffold(
       appBar: AppBar(
@@ -176,13 +173,22 @@ class _StickerPackInfoScreenState extends State<StickerPackInfoScreen> {
                     itemCount: stickerPack.stickers?.length ?? 0,
                     itemBuilder: (context, index) {
                       final sticker = stickerPack.stickers![index];
-                      return ClipRRect(
-                        borderRadius: BorderRadius.circular(8),
-                        child: FadeInImage(
-                          placeholder:
-                              const AssetImage("assets/images/logo.png"),
-                          image: NetworkImage(
-                            "$baseURL/sticker-packs/${stickerPack.identifier}/${sticker.imageFile}",
+                      final stickerUrl =
+                          "$baseURL/sticker-packs/${stickerPack.identifier}/${sticker.imageFile}";
+                      return GestureDetector(
+                        onLongPress: () {
+                          showAddStickerToUserPackSheet(
+                            context,
+                            imageUrl: stickerUrl,
+                            fileNameHint: sticker.imageFile,
+                          );
+                        },
+                        child: ClipRRect(
+                          borderRadius: BorderRadius.circular(8),
+                          child: FadeInImage(
+                            placeholder:
+                                const AssetImage("assets/images/logo.png"),
+                            image: NetworkImage(stickerUrl),
                           ),
                         ),
                       );

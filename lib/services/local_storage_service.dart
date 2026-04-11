@@ -6,6 +6,8 @@ import 'package:logger/logger.dart';
 /// A service class that provides local storage functionality using SharedPreferences.
 /// This service handles storing and retrieving various data types with proper error handling.
 class LocalStorageService {
+  static const String _userPacksKey = 'user_packs';
+
   static final LocalStorageService _instance = LocalStorageService._internal();
   static LocalStorageService get instance => _instance;
 
@@ -28,35 +30,26 @@ class LocalStorageService {
 
   bool get isInitialized => _prefs != null;
 
-  Future<void> setUserPackList(
-      String packName, List<UserPack> userPacks) async {
+  /// Replaces the full list of user-created sticker packs.
+  Future<void> saveUserPacks(List<UserPack> userPacks) async {
     if (!isInitialized) {
       throw Exception(
           'LocalStorageService not initialized. Call initialize() first.');
     }
-
-    // Get existing packs
-    final existingJsonList = _prefs!.getStringList(packName) ?? [];
-    final existingPacks = existingJsonList
-        .map((json) => UserPack.fromJson(jsonDecode(json)))
-        .toList();
-
-    // Add new packs
-    existingPacks.addAll(userPacks);
-
-    // Save combined list
-    await _prefs!.setStringList(packName,
-        existingPacks.map((pack) => jsonEncode(pack.toJson())).toList());
+    await _prefs!.setStringList(
+      _userPacksKey,
+      userPacks.map((pack) => jsonEncode(pack.toJson())).toList(),
+    );
   }
 
-  Future<List<UserPack>> getUserPackList() async {
+  Future<List<UserPack>> getUserPacks() async {
     if (!isInitialized) {
       throw Exception(
           'LocalStorageService not initialized. Call initialize() first.');
     }
 
-    final jsonString = _prefs!.getStringList('user_packs');
-    return jsonString
+    final jsonList = _prefs!.getStringList(_userPacksKey);
+    return jsonList
             ?.map((json) => UserPack.fromJson(jsonDecode(json)))
             .toList() ??
         [];

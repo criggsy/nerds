@@ -5,8 +5,11 @@ import 'package:nerds/screens/stickers_screen.dart';
 import 'package:nerds/screens/sticker_pack_info.dart';
 import 'package:nerds/screens/information_screen.dart';
 import 'package:nerds/screens/notification_test_screen.dart';
-import 'package:nerds/screens/folder_stickers_screen.dart';
-import 'package:nerds/screens/folder_detail_screen.dart';
+import 'package:nerds/screens/create_user_pack_screen.dart';
+import 'package:nerds/screens/server_sticker_picker_screen.dart';
+import 'package:nerds/screens/user_pack_detail_screen.dart';
+import 'package:nerds/models/sticker_data.dart';
+import 'package:nerds/services/user_pack_service.dart';
 
 class AppRouter {
   static final GoRouter router = GoRouter(
@@ -29,29 +32,54 @@ class AppRouter {
         name: 'sticker-pack-info',
         builder: (context, state) {
           final args = state.extra as Map<String, dynamic>?;
+          final pack = args?['stickerPack'] as StickerPacks?;
+          if (pack == null) {
+            return Scaffold(
+              appBar: AppBar(title: const Text('Sticker pack')),
+              body: const Center(child: Text('Pack not found')),
+            );
+          }
           return StickerPackInfoScreen(
-            key: ValueKey(
-                'sticker-pack-info-${args?['stickerPack']?.identifier ?? 'default'}'),
+            key: ValueKey('sticker-pack-info-${pack.identifier}'),
+            stickerPack: pack,
           );
         },
       ),
       GoRoute(
-        path: '/folder-stickers',
-        name: 'folder-stickers',
-        builder: (context, state) => const FolderStickersScreen(),
+        path: '/user-packs/new',
+        name: 'user-pack-new',
+        builder: (context, state) {
+          final extra = state.extra as Map<String, dynamic>?;
+          return CreateUserPackScreen(
+            seedStickerUrl: extra?['seedStickerUrl'] as String?,
+          );
+        },
       ),
       GoRoute(
-        path: '/folder-detail',
-        name: 'folder-detail',
+        path: '/pick-server-stickers',
+        name: 'pick-server-stickers',
         builder: (context, state) {
-          final args = state.extra as Map<String, dynamic>?;
-          final folder = args?['folder'];
-          if (folder == null) {
-            return const Scaffold(
-              body: Center(child: Text('Folder not found')),
+          final extra = state.extra as Map<String, dynamic>?;
+          final slots = extra?['remainingSlots'] as int? ?? 30;
+          return ServerStickerPickerScreen(remainingSlots: slots);
+        },
+      ),
+      GoRoute(
+        path: '/user-packs/:packId',
+        name: 'user-pack-detail',
+        builder: (context, state) {
+          final id = state.pathParameters['packId']!;
+          final pack = UserPackService.instance.getById(id);
+          if (pack == null) {
+            return Scaffold(
+              appBar: AppBar(title: const Text('My pack')),
+              body: const Center(child: Text('Pack not found')),
             );
           }
-          return FolderDetailScreen(folder: folder);
+          return UserPackDetailScreen(
+            key: ValueKey('user-pack-$id'),
+            pack: pack,
+          );
         },
       ),
       GoRoute(

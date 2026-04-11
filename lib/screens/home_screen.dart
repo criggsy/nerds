@@ -59,15 +59,6 @@ class HomeScreen extends StatelessWidget {
             const SizedBox(height: 16),
             _buildNavigationCard(
               context,
-              title: "Folder View",
-              subtitle: "Browse stickers by folders",
-              icon: Icons.folder,
-              color: Colors.green,
-              onTap: () => context.go('/folder-stickers'),
-            ),
-            const SizedBox(height: 16),
-            _buildNavigationCard(
-              context,
               title: "Information",
               subtitle: "About the app and usage",
               icon: Icons.info,

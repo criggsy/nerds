@@ -1,5 +1,6 @@
 import 'package:whatsapp_stickers_handler/whatsapp_stickers_handler.dart';
 import '../models/sticker_data.dart';
+import '../models/user_pack.dart';
 import 'dart:io';
 import 'package:dio/dio.dart';
 import 'package:path_provider/path_provider.dart';
@@ -31,6 +32,36 @@ Future<StickerPackStatus> getStickerPackStatus(StickerPacks pack) async {
     hasUpdate: hasUpdate,
     savedVersion: installedVersion,
   );
+}
+
+Future<StickerPackStatus> getUserPackStatus(UserPack pack) async {
+  final isInstalled =
+      await WhatsappStickersHandler().isStickerPackInstalled(pack.id);
+  final installedVersion =
+      await WhatsappStickersHandler.getInstalledImageDataVersion(pack.id);
+  final currentVersion = int.tryParse(pack.packVersion ?? '1') ?? 1;
+  final hasUpdate = isInstalled && installedVersion != currentVersion;
+
+  return StickerPackStatus(
+    isInstalled: isInstalled,
+    hasUpdate: hasUpdate,
+    savedVersion: installedVersion,
+  );
+}
+
+/// Local sticker files for [WhatsappStickersHandler.addStickerPack].
+(Map<String, List<String>>, String) userPackFilesForWhatsapp(UserPack pack) {
+  const defaultEmojis = ['😀'];
+  final stickers = <String, List<String>>{};
+  for (final path in pack.stickerPaths) {
+    stickers[WhatsappStickerImageHandler.fromFile(path).path] = defaultEmojis;
+  }
+  final thumb = pack.thumbnailPath;
+  if (thumb == null || thumb.isEmpty) {
+    throw StateError('User pack missing tray image');
+  }
+  final tray = WhatsappStickerImageHandler.fromFile(thumb).path;
+  return (stickers, tray);
 }
 
 Future<(Map<String, List<String>>, String)> downloadStickersAndTrayImage(
