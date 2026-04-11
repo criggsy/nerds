@@ -6,10 +6,9 @@ import 'package:dio/dio.dart';
 import 'package:nerds/Widgets/sticker_pack_item.dart';
 import 'package:fluttertoast/fluttertoast.dart';
 import 'package:nerds/utils/logger.dart';
+import 'package:go_router/go_router.dart';
 
 class StickersScreen extends StatefulWidget {
-  static const routeName = '/';
-
   /// 🔑 GlobalKey to access this screen from anywhere
   static final GlobalKey<StickersScreenState> globalKey = GlobalKey();
 
@@ -85,9 +84,9 @@ class StickersScreenState extends State<StickersScreen> {
                 final pack = stickerData.stickerPacks![index];
                 return GestureDetector(
                   onTap: () async {
-                    final updated = await Navigator.of(context).pushNamed(
+                    final updated = await context.push(
                       '/sticker-pack-info',
-                      arguments: {
+                      extra: {
                         'stickerPack': pack,
                       },
                     );

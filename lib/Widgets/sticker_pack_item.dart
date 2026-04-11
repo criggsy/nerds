@@ -2,12 +2,12 @@ import 'package:flutter/material.dart';
 import 'package:fluttertoast/fluttertoast.dart';
 import 'package:nerds/constants/constants.dart';
 import 'package:nerds/models/sticker_data.dart';
-import 'package:nerds/screens/sticker_pack_info.dart';
 import 'package:nerds/utils/sticker_config_utils.dart';
 import 'package:nerds/utils/sticker_pack_status.dart';
 import 'package:whatsapp_stickers_handler/exceptions.dart';
 import 'package:whatsapp_stickers_handler/whatsapp_stickers_handler.dart';
 import 'package:nerds/utils/logger.dart';
+import 'package:go_router/go_router.dart';
 
 class StickerPackItem extends StatefulWidget {
   final StickerPacks stickerPack;
@@ -42,9 +42,9 @@ class _StickerPackItemState extends State<StickerPackItem> {
       padding: const EdgeInsets.symmetric(vertical: 8),
       child: ListTile(
         onTap: () async {
-          final updated = await Navigator.of(context).pushNamed(
-            StickerPackInfoScreen.routeName,
-            arguments: {'stickerPack': widget.stickerPack},
+          final updated = await context.push(
+            '/sticker-pack-info',
+            extra: {'stickerPack': widget.stickerPack},
           );
           if (updated == true && mounted) {
             setState(_refreshStatus);

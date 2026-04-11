@@ -1,11 +1,11 @@
 import 'package:flutter/material.dart';
-import 'package:nerds/screens/information_screen.dart';
-import 'package:nerds/screens/sticker_pack_info.dart';
 import 'package:nerds/screens/stickers_screen.dart';
-import 'package:nerds/screens/notification_test_screen.dart';
 import 'package:firebase_core/firebase_core.dart';
 import 'package:firebase_messaging/firebase_messaging.dart';
 import 'package:nerds/utils/logger.dart';
+import 'package:nerds/services/local_storage_service.dart';
+import 'package:nerds/router/app_router.dart';
+import 'package:go_router/go_router.dart';
 
 final GlobalKey<NavigatorState> navigatorKey = GlobalKey<NavigatorState>();
 
@@ -18,6 +18,9 @@ enum PopupMenuOptions {
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
   await Firebase.initializeApp();
+
+  // Initialize local storage service
+  await LocalStorageService.instance.initialize();
 
   // Subscribe to production topic
   await FirebaseMessaging.instance.subscribeToTopic("stickers-update");
@@ -65,20 +68,23 @@ class _MyAppState extends State<MyApp> {
       StickersScreen.globalKey.currentState?.refreshStickerData();
 
       if (message.notification != null && navigatorKey.currentContext != null) {
+        final context = navigatorKey.currentContext!;
         Future.delayed(Duration.zero, () {
-          showDialog(
-            context: navigatorKey.currentContext!,
-            builder: (context) => AlertDialog(
-              title: Text(message.notification!.title ?? 'Notification'),
-              content: Text(message.notification!.body ?? ''),
-              actions: [
-                TextButton(
-                  child: const Text("OK"),
-                  onPressed: () => Navigator.of(context).pop(),
-                )
-              ],
-            ),
-          );
+          if (context.mounted) {
+            showDialog(
+              context: context,
+              builder: (dialogContext) => AlertDialog(
+                title: Text(message.notification!.title ?? 'Notification'),
+                content: Text(message.notification!.body ?? ''),
+                actions: [
+                  TextButton(
+                    child: const Text("OK"),
+                    onPressed: () => Navigator.of(dialogContext).pop(),
+                  )
+                ],
+              ),
+            );
+          }
         });
       }
     });
@@ -88,14 +94,15 @@ class _MyAppState extends State<MyApp> {
 
       final ctx = navigatorKey.currentContext;
       if (ctx != null) {
-        navigatorKey.currentState?.pushNamedAndRemoveUntil(
-          StickersScreen.routeName,
-          (route) => false,
-          arguments: 'remoteStickers',
-        );
+        // Navigate to stickers screen using GoRouter
+        GoRouter.of(ctx).go('/');
 
+        // Store context for async operation
+        final context = ctx;
         Future.delayed(const Duration(milliseconds: 500), () {
-          StickersScreen.globalKey.currentState?.refreshStickerData();
+          if (context.mounted) {
+            StickersScreen.globalKey.currentState?.refreshStickerData();
+          }
         });
       }
     });
@@ -103,8 +110,8 @@ class _MyAppState extends State<MyApp> {
 
   @override
   Widget build(BuildContext context) {
-    return MaterialApp(
-      navigatorKey: navigatorKey,
+    return MaterialApp.router(
+      routerConfig: AppRouter.router,
       title: "WhatsApp Stickers",
       theme: ThemeData(
         brightness: Brightness.light,
@@ -121,32 +128,6 @@ class _MyAppState extends State<MyApp> {
       ),
       themeMode: ThemeMode.dark, // 🔁 You can toggle this dynamically later
       debugShowCheckedModeBanner: false,
-      onGenerateRoute: (settings) {
-        if (settings.name == StickersScreen.routeName) {
-          return MaterialPageRoute(
-            builder: (ctx) => StickersScreen(key: StickersScreen.globalKey),
-            settings: const RouteSettings(arguments: null),
-          );
-        } else if (settings.name == StickerPackInfoScreen.routeName) {
-          final args = settings.arguments as Map<String, dynamic>?;
-          if (args != null) {
-            return MaterialPageRoute(
-              builder: (ctx) => const StickerPackInfoScreen(),
-              settings: RouteSettings(arguments: args),
-            );
-          }
-        } else if (settings.name == InformationScreen.routeName) {
-          return MaterialPageRoute(
-            builder: (ctx) => const InformationScreen(),
-          );
-        } else if (settings.name == NotificationTestScreen.routeName) {
-          return MaterialPageRoute(
-            builder: (ctx) => const NotificationTestScreen(),
-          );
-        }
-        return null;
-      },
-      initialRoute: StickersScreen.routeName,
     );
   }
 }
