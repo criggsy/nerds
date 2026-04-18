@@ -11,6 +11,7 @@ import 'package:nerds/models/user_pack.dart';
 import 'package:nerds/services/user_pack_service.dart';
 import 'package:nerds/utils/sticker_config_utils.dart';
 import 'package:nerds/utils/sticker_pack_status.dart';
+import 'package:nerds/utils/app_messaging.dart';
 import 'package:nerds/utils/logger.dart';
 
 class UserPackDetailScreen extends StatefulWidget {
@@ -59,10 +60,13 @@ class _UserPackDetailScreenState extends State<UserPackDetailScreen> {
         log.i("ℹ️ Treated 'already_added' as success.");
       } else {
         result = null;
-        Fluttertoast.showToast(
-          msg: "❌ Failed: ${e.cause ?? 'Unknown error'}",
-          gravity: ToastGravity.BOTTOM,
-        );
+        if (mounted) {
+          await showAppErrorDialog(
+            context,
+            e.cause ?? 'Unknown error',
+            title: 'Couldn’t add to WhatsApp',
+          );
+        }
       }
     }
 

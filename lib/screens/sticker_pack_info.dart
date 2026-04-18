@@ -7,7 +7,7 @@ import 'package:nerds/utils/sticker_config_utils.dart';
 import 'package:nerds/utils/sticker_pack_status.dart';
 import 'package:whatsapp_stickers_handler/exceptions.dart';
 import 'package:whatsapp_stickers_handler/whatsapp_stickers_handler.dart';
-import 'package:fluttertoast/fluttertoast.dart';
+import 'package:nerds/utils/app_messaging.dart';
 import 'package:nerds/utils/logger.dart';
 
 class StickerPackInfoScreen extends StatefulWidget {
@@ -54,10 +54,13 @@ class _StickerPackInfoScreenState extends State<StickerPackInfoScreen> {
         log.i("ℹ️ Treated 'already_added' as success.");
       } else {
         result = null;
-        Fluttertoast.showToast(
-          msg: "❌ Failed: ${e.cause ?? 'Unknown error'}",
-          gravity: ToastGravity.BOTTOM,
-        );
+        if (mounted) {
+          await showAppErrorDialog(
+            context,
+            e.cause ?? 'Unknown error',
+            title: 'Couldn’t add to WhatsApp',
+          );
+        }
       }
     }
 

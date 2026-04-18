@@ -6,6 +6,7 @@ import 'package:nerds/utils/sticker_config_utils.dart';
 import 'package:nerds/utils/sticker_pack_status.dart';
 import 'package:whatsapp_stickers_handler/exceptions.dart';
 import 'package:whatsapp_stickers_handler/whatsapp_stickers_handler.dart';
+import 'package:nerds/utils/app_messaging.dart';
 import 'package:nerds/utils/logger.dart';
 import 'package:go_router/go_router.dart';
 
@@ -126,10 +127,13 @@ class _StickerPackItemState extends State<StickerPackItem> {
                   result = 'already_added';
                 } else {
                   log.e("❌ WhatsApp error: ${e.cause}");
-                  Fluttertoast.showToast(
-                    msg: "❌ Failed: ${e.cause ?? 'Unknown error'}",
-                    gravity: ToastGravity.BOTTOM,
-                  );
+                  if (mounted) {
+                    await showAppErrorDialog(
+                      context,
+                      e.cause ?? 'Unknown error',
+                      title: 'Couldn’t add to WhatsApp',
+                    );
+                  }
                   setState(() => _isProcessing = false);
                   return;
                 }

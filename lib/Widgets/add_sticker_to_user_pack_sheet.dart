@@ -3,6 +3,7 @@ import 'package:fluttertoast/fluttertoast.dart';
 import 'package:go_router/go_router.dart';
 
 import 'package:nerds/services/user_pack_service.dart';
+import 'package:nerds/utils/app_messaging.dart';
 
 /// Long-press on a server sticker → add into a user pack (new or existing).
 Future<void> showAddStickerToUserPackSheet(
@@ -105,9 +106,10 @@ Future<void> showAddStickerToUserPackSheet(
                                     }
                                   } catch (e) {
                                     if (context.mounted) {
-                                      ScaffoldMessenger.of(context)
-                                          .showSnackBar(
-                                        SnackBar(content: Text('$e')),
+                                      await showAppErrorDialog(
+                                        context,
+                                        '$e',
+                                        title: 'Couldn’t add sticker',
                                       );
                                     }
                                   }
