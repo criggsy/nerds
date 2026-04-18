@@ -73,6 +73,15 @@ class WhatsappStickersHandlerPlugin : FlutterPlugin, MethodCallHandler, Activity
                     result.error("CONFIG_ERROR", e.message, null)
                 }
             }
+            "repairUserPackStickerRefsToWebp" -> {
+                try {
+                    ConfigFileManager.migrateUserPackRefsToWebp(context!!)
+                    result.success(true)
+                } catch (e: Exception) {
+                    Log.e("StickerDebug", "❌ repairUserPackStickerRefsToWebp: ${e.message}")
+                    result.error("CONFIG_ERROR", e.message, null)
+                }
+            }
             "getInstalledImageDataVersion" -> {
                 val identifier = call.argument<String>("identifier")
                 if (identifier == null) {

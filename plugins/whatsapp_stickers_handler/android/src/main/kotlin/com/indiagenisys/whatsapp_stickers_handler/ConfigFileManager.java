@@ -214,4 +214,73 @@ public class ConfigFileManager {
     public static String getConfigFilePath(Context context) {
         return PathUtils.getDataDirectory(context) + File.separator + CONTENT_FILE_NAME;
     }
+
+    /**
+     * After Flutter migrates on-disk user pack images to .webp, update sticker_packs.json
+     * so {@link ContentFileParser} can load (it rejects non-.webp sticker filenames).
+     */
+    static void migrateUserPackRefsToWebp(Context context) throws JSONException {
+        File file = new File(getConfigFilePath(context));
+        if (!file.exists()) {
+            return;
+        }
+        String raw = readConfigFile(context);
+        if (raw == null || raw.trim().isEmpty()) {
+            return;
+        }
+        JSONObject root = new JSONObject(raw);
+        if (!root.has("sticker_packs")) {
+            return;
+        }
+        JSONArray packs = root.getJSONArray("sticker_packs");
+        boolean changed = false;
+        for (int i = 0; i < packs.length(); i++) {
+            JSONObject pack = packs.getJSONObject(i);
+            String id = pack.optString("identifier", "");
+            if (!id.startsWith("user_local_")) {
+                continue;
+            }
+            if (pack.has("tray_image_file")) {
+                String tray = pack.getString("tray_image_file");
+                String nw = replaceImageExtWithWebp(tray);
+                if (!tray.equals(nw)) {
+                    pack.put("tray_image_file", nw);
+                    changed = true;
+                }
+            }
+            if (!pack.has("stickers")) {
+                continue;
+            }
+            JSONArray stickers = pack.getJSONArray("stickers");
+            for (int j = 0; j < stickers.length(); j++) {
+                JSONObject st = stickers.getJSONObject(j);
+                String img = st.getString("image_file");
+                String nw = replaceImageExtWithWebp(img);
+                if (!img.equals(nw)) {
+                    st.put("image_file", nw);
+                    changed = true;
+                }
+            }
+        }
+        if (changed) {
+            writeConfigFile(context, root.toString());
+        }
+    }
+
+    private static String replaceImageExtWithWebp(String flattenedPath) {
+        if (flattenedPath == null || flattenedPath.isEmpty()) {
+            return flattenedPath;
+        }
+        String lower = flattenedPath.toLowerCase(Locale.US);
+        if (lower.endsWith(".webp")) {
+            return flattenedPath;
+        }
+        if (lower.endsWith(".png") || lower.endsWith(".jpg") || lower.endsWith(".jpeg")) {
+            int lastDot = flattenedPath.lastIndexOf('.');
+            if (lastDot >= 0) {
+                return flattenedPath.substring(0, lastDot) + ".webp";
+            }
+        }
+        return flattenedPath;
+    }
 }
