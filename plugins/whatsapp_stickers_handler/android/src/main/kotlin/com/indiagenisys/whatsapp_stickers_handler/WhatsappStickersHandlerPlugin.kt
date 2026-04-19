@@ -19,7 +19,9 @@ class WhatsappStickersHandlerPlugin : FlutterPlugin, MethodCallHandler, Activity
     private lateinit var channel: MethodChannel
     private var context: Context? = null
     private var activity: Activity? = null
-    private var result: MethodChannel.Result? = null
+    // Only for addStickerPack. Do not store every method's Result here — other channel calls
+    // would overwrite it before onActivityResult and cause "Reply already submitted".
+    private var pendingAddPackResult: MethodChannel.Result? = null
     private val addPackRequestCode = 200
 
     override fun onAttachedToEngine(@NonNull binding: FlutterPlugin.FlutterPluginBinding) {
@@ -28,7 +30,6 @@ class WhatsappStickersHandlerPlugin : FlutterPlugin, MethodCallHandler, Activity
     }
 
     override fun onMethodCall(@NonNull call: MethodCall, @NonNull result: MethodChannel.Result) {
-        this.result = result
         when (call.method) {
             "platformVersion" -> result.success("Android ${android.os.Build.VERSION.RELEASE}")
             "isWhatsAppInstalled" -> result.success(WhitelistCheck.isWhatsAppInstalled(context!!))
@@ -49,6 +50,11 @@ class WhatsappStickersHandlerPlugin : FlutterPlugin, MethodCallHandler, Activity
             }
             "addStickerPack" -> {
                 try {
+                    val act = activity
+                    if (act == null) {
+                        result.error("NO_ACTIVITY", "No activity", null)
+                        return
+                    }
                     val stickerPack: StickerPack = ConfigFileManager.fromMethodCall(context, call)
                     ConfigFileManager.addNewPack(context, stickerPack) // this updates content.json
 
@@ -56,10 +62,14 @@ class WhatsappStickersHandlerPlugin : FlutterPlugin, MethodCallHandler, Activity
 
                     val authority = getContentProviderAuthority(context!!)
                     val intent = createIntentToAddStickerPack(authority, stickerPack.identifier, stickerPack.name)
-                    activity?.startActivityForResult(Intent.createChooser(intent, "Add Sticker"), addPackRequestCode)
+                    pendingAddPackResult?.error("CANCELLED", "Replaced by a new add request", null)
+                    pendingAddPackResult = result
+                    act.startActivityForResult(Intent.createChooser(intent, "Add Sticker"), addPackRequestCode)
                 } catch (e: InvalidPackException) {
+                    if (pendingAddPackResult === result) pendingAddPackResult = null
                     result.error(e.code, e.message, null)
                 } catch (e: Exception) {
+                    if (pendingAddPackResult === result) pendingAddPackResult = null
                     result.error("PACK_ERROR", e.message, null)
                 }
             }
@@ -105,20 +115,25 @@ class WhatsappStickersHandlerPlugin : FlutterPlugin, MethodCallHandler, Activity
 
     override fun onActivityResult(requestCode: Int, resultCode: Int, data: Intent?): Boolean {
         if (requestCode == addPackRequestCode) {
+            val pending = pendingAddPackResult
+            pendingAddPackResult = null
+            if (pending == null) {
+                return true
+            }
             when (resultCode) {
                 Activity.RESULT_OK -> {
                     val bundle = data?.extras
                     when {
-                        bundle?.getBoolean("add_successful") == true -> result?.success("add_successful")
-                        bundle?.getBoolean("already_added") == true -> result?.error("already_added", "Sticker pack already added", null)
-                        else -> result?.success("success")
+                        bundle?.getBoolean("add_successful") == true -> pending.success("add_successful")
+                        bundle?.getBoolean("already_added") == true -> pending.error("already_added", "Sticker pack already added", null)
+                        else -> pending.success("success")
                     }
                 }
                 Activity.RESULT_CANCELED -> {
                     val error = data?.getStringExtra("validation_error")
-                    result?.error("cancelled", error ?: "User cancelled", null)
+                    pending.error("cancelled", error ?: "User cancelled", null)
                 }
-                else -> result?.success("unknown")
+                else -> pending.success("unknown")
             }
         }
         return true

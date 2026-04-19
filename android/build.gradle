@@ -9,6 +9,15 @@ rootProject.buildDir = "../build"
 subprojects {
     project.buildDir = "${rootProject.buildDir}/${project.name}"
 }
+subprojects { subproject ->
+    // Plugins (e.g. firebase_messaging) compile in separate modules; app/build.gradle
+    // does not see their JavaCompile tasks. Apply javac lint here for full line-level output.
+    subproject.afterEvaluate {
+        subproject.tasks.withType(JavaCompile).configureEach {
+            options.compilerArgs += ["-Xlint:deprecation", "-Xlint:unchecked"]
+        }
+    }
+}
 subprojects {
     project.evaluationDependsOn(":app")
 }

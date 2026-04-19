@@ -170,22 +170,23 @@ class StickerPackLoader {
     }
 
     static byte[] fetchStickerAsset(@NonNull final String identifier, @NonNull final String name, Context context) throws IOException {
-
-        InputStream inputStream = fetchFile(context.getAssets(), name).createInputStream();
-        final ByteArrayOutputStream buffer = new ByteArrayOutputStream();
-        if (inputStream == null) {
-            String stickerFileName = name.replace("_SSP_",File.separator);
-            stickerFileName = stickerFileName.replace("._.", File.separator);
-            throw new IOException("cannot read sticker asset:" + stickerFileName);
+        // fetchFile returns null when the path cannot be opened — do not call createInputStream() on null (NPE crash).
+        try (AssetFileDescriptor fd = fetchFile(context.getAssets(), name)) {
+            if (fd == null) {
+                String stickerFileName = name.replace("_SSP_", File.separator);
+                stickerFileName = stickerFileName.replace("._.", File.separator);
+                throw new IOException("cannot read sticker asset:" + stickerFileName);
+            }
+            try (InputStream inputStream = fd.createInputStream()) {
+                final ByteArrayOutputStream buffer = new ByteArrayOutputStream();
+                int read;
+                byte[] data = new byte[16384];
+                while ((read = inputStream.read(data, 0, data.length)) != -1) {
+                    buffer.write(data, 0, read);
+                }
+                return buffer.toByteArray();
+            }
         }
-        int read;
-        byte[] data = new byte[16384];
-
-        while ((read = inputStream.read(data, 0, data.length)) != -1) {
-            buffer.write(data, 0, read);
-        }
-        return buffer.toByteArray();
-
     }
 
     static Uri getStickerListUri(Context context, String identifier) {

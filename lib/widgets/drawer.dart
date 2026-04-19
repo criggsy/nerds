@@ -61,7 +61,13 @@ class MyDrawer extends StatelessWidget {
                     const Icon(Icons.folder_special, color: Colors.blue),
                 title: const Text("Sticker Packs", style: _menuTextColor),
                 onTap: () {
-                  context.go('/stickers');
+                  final router = GoRouter.of(context);
+                  final onStickers =
+                      router.state.matchedLocation == '/stickers';
+                  Navigator.of(context).pop();
+                  if (!onStickers) {
+                    router.push('/stickers');
+                  }
                 },
               ),
               _sectionHeader(context, 'My packs'),

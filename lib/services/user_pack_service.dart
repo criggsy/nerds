@@ -1,6 +1,5 @@
 import 'dart:io';
 import 'dart:math';
-
 import 'package:dio/dio.dart';
 import 'package:flutter/foundation.dart';
 import 'package:image_picker/image_picker.dart';
@@ -26,7 +25,9 @@ class UserPackService extends ChangeNotifier {
 
   Future<void> load() async {
     _packs = await LocalStorageService.instance.getUserPacks();
-    final migrated = await _migratePacksToWebpIfNeeded();
+    var migrated = await _migratePacksToWebpIfNeeded();
+    migrated = await _migrateTrayDimensionsIfNeeded() || migrated;
+    migrated = await _migrateStickerCanvas512IfNeeded() || migrated;
     if (migrated) {
       await LocalStorageService.instance.saveUserPacks(_packs);
     }
@@ -78,7 +79,10 @@ class UserPackService extends ChangeNotifier {
     }
 
     final trayPath = p.join(dir.path, 'tray.webp');
-    await File(stickerPaths.first).copy(trayPath);
+    final trayBytes = await encodeStickerBytesToTrayWebP(
+      await File(stickerPaths.first).readAsBytes(),
+    );
+    await File(trayPath).writeAsBytes(trayBytes);
 
     final pack = UserPack(
       id: id,
@@ -95,12 +99,36 @@ class UserPackService extends ChangeNotifier {
   }
 
   /// Downloads [imageUrl] into an existing pack folder and appends to [stickerPaths].
-  /// [fileNameHint] should be the remote file name (e.g. `1.webp`) for a correct extension.
+  /// Bumps [UserPack.packVersion] by 1 (same scheme as server [imageDataVersion] — integer string).
   Future<void> addStickerFromUrl(
     String packId,
     String imageUrl, {
     String? fileNameHint,
   }) async {
+    final dio = Dio();
+    final response = await dio.get<Uint8List>(
+      imageUrl,
+      options: Options(responseType: ResponseType.bytes),
+    );
+    final raw = response.data;
+    if (raw == null || raw.isEmpty) {
+      throw StateError('Empty image download');
+    }
+    await addStickerFromImageBytes(packId, raw);
+  }
+
+  /// Adds one photo from the device (gallery/camera) to an existing pack.
+  /// Increments [UserPack.packVersion] by 1 so WhatsApp can show an update like server packs.
+  Future<void> addStickerFromXFile(String packId, XFile file) async {
+    final raw = await file.readAsBytes();
+    if (raw.isEmpty) {
+      throw StateError('Empty image');
+    }
+    await addStickerFromImageBytes(packId, raw);
+  }
+
+  /// Appends one encoded sticker; bumps pack version by 1.
+  Future<void> addStickerFromImageBytes(String packId, Uint8List raw) async {
     final pack = getById(packId);
     if (pack == null) {
       throw ArgumentError('Pack not found');
@@ -118,15 +146,6 @@ class UserPackService extends ChangeNotifier {
     final nextIndex = pack.stickerPaths.length + 1;
     final destPath = p.join(dir.path, 'sticker_$nextIndex.webp');
 
-    final dio = Dio();
-    final response = await dio.get<Uint8List>(
-      imageUrl,
-      options: Options(responseType: ResponseType.bytes),
-    );
-    final raw = response.data;
-    if (raw == null || raw.isEmpty) {
-      throw StateError('Empty image download');
-    }
     final webp = await encodeImageBytesToStickerWebP(raw);
     await File(destPath).writeAsBytes(webp);
 
@@ -139,6 +158,63 @@ class UserPackService extends ChangeNotifier {
       createdAt: pack.createdAt,
       stickerPaths: newPaths,
       thumbnailPath: pack.thumbnailPath,
+      packVersion: newVersion,
+    );
+
+    _packs = _packs.map((e) => e.id == packId ? updated : e).toList();
+    await LocalStorageService.instance.saveUserPacks(_packs);
+    notifyListeners();
+  }
+
+  /// Removes the sticker at [index], deletes its file, and bumps [UserPack.packVersion] by 1.
+  /// WhatsApp allows 3–30 stickers per pack; removal is blocked if it would leave fewer than
+  /// [minStickers].
+  /// If the first sticker is removed, [thumbnailPath] is regenerated from the new first sticker.
+  Future<void> removeStickerAt(String packId, int index) async {
+    final pack = getById(packId);
+    if (pack == null) {
+      throw ArgumentError('Pack not found');
+    }
+    if (index < 0 || index >= pack.stickerPaths.length) {
+      throw ArgumentError('Invalid sticker index');
+    }
+    if (pack.stickerPaths.length <= minStickers) {
+      throw ArgumentError(
+        'A pack must keep at least $minStickers stickers for WhatsApp. '
+        'Delete the whole pack if you want to remove it.',
+      );
+    }
+
+    final removedPath = pack.stickerPaths[index];
+    final newPaths = List<String>.from(pack.stickerPaths)..removeAt(index);
+
+    try {
+      final f = File(removedPath);
+      if (await f.exists()) {
+        await f.delete();
+      }
+    } catch (e, st) {
+      debugPrint('removeStickerAt: could not delete file: $e\n$st');
+    }
+
+    var thumb = pack.thumbnailPath;
+    if (index == 0 && newPaths.isNotEmpty && thumb != null && thumb.isNotEmpty) {
+      final firstFile = File(newPaths.first);
+      if (await firstFile.exists()) {
+        final trayBytes = await encodeStickerBytesToTrayWebP(
+          await firstFile.readAsBytes(),
+        );
+        await File(thumb).writeAsBytes(trayBytes);
+      }
+    }
+
+    final newVersion = (_parsePackVersion(pack.packVersion) + 1).toString();
+    final updated = UserPack(
+      id: pack.id,
+      name: pack.name,
+      createdAt: pack.createdAt,
+      stickerPaths: newPaths,
+      thumbnailPath: thumb,
       packVersion: newVersion,
     );
 
@@ -184,6 +260,63 @@ class UserPackService extends ChangeNotifier {
       _packs = next;
     }
     return changed;
+  }
+
+  /// Older builds set [tray.webp] by copying a full sticker (often > 512 px). WhatsApp requires
+  /// tray width/height in \[24, 512\] and ≤ 50 KB ([StickerPackValidator]).
+  Future<bool> _migrateTrayDimensionsIfNeeded() async {
+    var changed = false;
+    for (final pack in _packs) {
+      final thumb = pack.thumbnailPath;
+      final stickers = pack.stickerPaths;
+      if (thumb == null || thumb.isEmpty || stickers.isEmpty) continue;
+      final thumbFile = File(thumb);
+      final sticker0 = File(stickers.first);
+      if (!await thumbFile.exists() || !await sticker0.exists()) continue;
+      final trayBytes = await thumbFile.readAsBytes();
+      if (!trayWebpExceedsWhatsappLimits(trayBytes)) continue;
+      final fixed =
+          await encodeStickerBytesToTrayWebP(await sticker0.readAsBytes());
+      await thumbFile.writeAsBytes(fixed);
+      changed = true;
+    }
+    return changed;
+  }
+
+  /// Older builds encoded stickers with min 512×512 but non-square dimensions; WhatsApp rejects those.
+  Future<bool> _migrateStickerCanvas512IfNeeded() async {
+    var any = false;
+    final next = <UserPack>[];
+    for (final pack in _packs) {
+      var packTouched = false;
+      for (final path in pack.stickerPaths) {
+        final file = File(path);
+        if (!await file.exists()) continue;
+        if (p.extension(path).toLowerCase() != '.webp') continue;
+        final bytes = await file.readAsBytes();
+        if (!stickerWebpNeeds512SquareCanvas(bytes)) continue;
+        final fixed = await encodeImageBytesToStickerWebP(bytes);
+        await file.writeAsBytes(fixed);
+        packTouched = true;
+        any = true;
+      }
+      if (packTouched) {
+        next.add(UserPack(
+          id: pack.id,
+          name: pack.name,
+          createdAt: pack.createdAt,
+          stickerPaths: pack.stickerPaths,
+          thumbnailPath: pack.thumbnailPath,
+          packVersion: (_parsePackVersion(pack.packVersion) + 1).toString(),
+        ));
+      } else {
+        next.add(pack);
+      }
+    }
+    if (any) {
+      _packs = next;
+    }
+    return any;
   }
 
   /// If [absolutePath] is not `.webp`, replaces it with a WebP file next to it and removes the original.

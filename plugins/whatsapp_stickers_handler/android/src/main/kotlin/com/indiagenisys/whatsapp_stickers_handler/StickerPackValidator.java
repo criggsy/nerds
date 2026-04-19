@@ -128,20 +128,20 @@ class StickerPackValidator {
             if (bytes.length > STICKER_FILE_SIZE_LIMIT_KB * ONE_KIBIBYTE) {
                 throw new InvalidPackException(InvalidPackException.IMAGE_TOO_BIG,"sticker should be less than " + STICKER_FILE_SIZE_LIMIT_KB + "KB, sticker pack identifier:" + identifier + ", filename:" + fileName);
             }
-            /*try {
-                Bitmap webPImage = BitmapFactory.decodeByteArray(bytes, 0, bytes.length);
-                if (webPImage.getHeight() != IMAGE_HEIGHT) {
+            try {
+                Bitmap bitmap = BitmapFactory.decodeByteArray(bytes, 0, bytes.length);
+                if (bitmap == null) {
+                    throw new InvalidPackException(InvalidPackException.UNSUPPORTED_IMAGE_FORMAT,"Error decoding sticker webp, sticker pack identifier:" + identifier + ", filename:" + fileName);
+                }
+                if (bitmap.getHeight() != IMAGE_HEIGHT) {
                     throw new InvalidPackException(InvalidPackException.INCORRECT_IMAGE_SIZE,"sticker height should be " + IMAGE_HEIGHT + ", sticker pack identifier:" + identifier + ", filename:" + fileName);
                 }
-                if (webPImage.getWidth() != IMAGE_WIDTH) {
+                if (bitmap.getWidth() != IMAGE_WIDTH) {
                     throw new InvalidPackException(InvalidPackException.INCORRECT_IMAGE_SIZE,"sticker width should be " + IMAGE_WIDTH + ", sticker pack identifier:" + identifier + ", filename:" + fileName);
                 }
-//                if (webPImage.getFrameCount() > 1) {
-//                    throw new InvalidPackException(InvalidPackException.ANIMATED_IMAGES_NOT_SUPPORTED,"sticker should be a static image, no animated sticker support at the moment, sticker pack identifier:" + identifier + ", filename:" + fileName);
-//                }
             } catch (IllegalArgumentException e) {
                 throw new InvalidPackException(InvalidPackException.UNSUPPORTED_IMAGE_FORMAT,"Error parsing webp image, sticker pack identifier:" + identifier + ", filename:" + fileName);
-            }*/
+            }
         } catch (IOException e) {
             String stickerFileName = fileName.replace("_SSP_",File.separator);
             stickerFileName = stickerFileName.replace("._.", File.separator);

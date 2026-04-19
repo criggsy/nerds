@@ -134,7 +134,9 @@ class _StickerPackItemState extends State<StickerPackItem> {
                       title: 'Couldn’t add to WhatsApp',
                     );
                   }
-                  setState(() => _isProcessing = false);
+                  if (mounted) {
+                    setState(() => _isProcessing = false);
+                  }
                   return;
                 }
               }
@@ -162,7 +164,9 @@ class _StickerPackItemState extends State<StickerPackItem> {
                 }
               } else {
                 log.e("❌ WhatsApp did not accept the pack: $result");
-                setState(() => _isProcessing = false);
+                if (mounted) {
+                  setState(() => _isProcessing = false);
+                }
               }
             }
           : null,

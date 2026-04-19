@@ -6,6 +6,7 @@ import 'package:nerds/screens/sticker_pack_info.dart';
 import 'package:nerds/screens/information_screen.dart';
 import 'package:nerds/screens/notification_test_screen.dart';
 import 'package:nerds/screens/create_user_pack_screen.dart';
+import 'package:nerds/screens/sticker_cutout_screen.dart';
 import 'package:nerds/screens/server_sticker_picker_screen.dart';
 import 'package:nerds/screens/user_pack_detail_screen.dart';
 import 'package:nerds/models/sticker_data.dart';
@@ -53,6 +54,21 @@ class AppRouter {
           return CreateUserPackScreen(
             seedStickerUrl: extra?['seedStickerUrl'] as String?,
           );
+        },
+      ),
+      GoRoute(
+        path: '/user-packs/cutout',
+        name: 'user-pack-cutout',
+        builder: (context, state) {
+          final extra = state.extra as Map<String, dynamic>?;
+          final path = extra?['imagePath'] as String?;
+          if (path == null || path.isEmpty) {
+            return Scaffold(
+              appBar: AppBar(title: const Text('Cut out sticker')),
+              body: const Center(child: Text('Missing image')),
+            );
+          }
+          return StickerCutoutScreen(imagePath: path);
         },
       ),
       GoRoute(

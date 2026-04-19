@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
-import 'package:nerds/Widgets/add_sticker_to_user_pack_sheet.dart';
-import 'package:nerds/Widgets/drawer.dart';
+import 'package:nerds/widgets/add_sticker_to_user_pack_sheet.dart';
+import 'package:nerds/widgets/drawer.dart';
 import 'package:nerds/constants/constants.dart';
 import 'package:nerds/models/sticker_data.dart';
 import 'package:nerds/utils/sticker_config_utils.dart';
