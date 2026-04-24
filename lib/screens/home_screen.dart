@@ -90,6 +90,16 @@ class _HomeScreenState extends State<HomeScreen> {
             SliverToBoxAdapter(child: _buildServerSection(context)),
             SliverToBoxAdapter(
               child: Padding(
+                padding: const EdgeInsets.fromLTRB(16, 12, 16, 8),
+                child: FilledButton.icon(
+                  onPressed: () => context.push('/image-editor'),
+                  icon: const Icon(Icons.auto_fix_high_outlined),
+                  label: const Text('Create sticker image'),
+                ),
+              ),
+            ),
+            SliverToBoxAdapter(
+              child: Padding(
                 padding: const EdgeInsets.only(top: 8, bottom: 4),
                 child: Divider(height: 1, color: cs.outlineVariant),
               ),

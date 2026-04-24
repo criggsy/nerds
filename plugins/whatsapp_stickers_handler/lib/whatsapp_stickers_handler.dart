@@ -23,12 +23,22 @@ class WhatsappStickersHandler {
           await _channel.invokeMethod('getInstalledImageDataVersion', {
         "identifier": identifier,
       });
-
-      return int.tryParse(version ?? '0') ?? 0;
+      return _parseImageDataVersion(version);
     } catch (e) {
       debugPrint("⚠️ Failed to fetch installed image data version: $e");
       return 0;
     }
+  }
+
+  static int _parseImageDataVersion(String? raw) {
+    if (raw == null) return 0;
+    final trimmed = raw.trim();
+    if (trimmed.isEmpty) return 0;
+    final asInt = int.tryParse(trimmed);
+    if (asInt != null) return asInt;
+    final asNum = num.tryParse(trimmed);
+    if (asNum != null) return asNum.round();
+    return 0;
   }
 
   /// Check it whatsapp is installed or not

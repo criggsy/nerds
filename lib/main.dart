@@ -1,9 +1,12 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:nerds/screens/stickers_screen.dart';
 import 'package:firebase_core/firebase_core.dart';
 import 'package:firebase_messaging/firebase_messaging.dart';
 import 'package:nerds/utils/logger.dart';
 import 'package:nerds/services/local_storage_service.dart';
+import 'package:nerds/services/server_sticker_cache_service.dart';
 import 'package:nerds/services/user_pack_service.dart';
 import 'package:nerds/router/app_router.dart';
 import 'package:go_router/go_router.dart';
@@ -23,6 +26,7 @@ void main() async {
   // Initialize local storage service
   await LocalStorageService.instance.initialize();
   await UserPackService.instance.load();
+  unawaited(ServerStickerCacheService.instance.refreshFromServer());
 
   // Subscribe to production topic
   await FirebaseMessaging.instance.subscribeToTopic("stickers-update");

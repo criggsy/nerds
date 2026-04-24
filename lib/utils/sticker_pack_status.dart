@@ -18,14 +18,33 @@ class StickerPackStatus {
   });
 }
 
+int _parseVersionToInt(String? raw, {int fallback = 0}) {
+  if (raw == null) return fallback;
+  final trimmed = raw.trim();
+  if (trimmed.isEmpty) return fallback;
+  final asInt = int.tryParse(trimmed);
+  if (asInt != null) return asInt;
+  final asNum = num.tryParse(trimmed);
+  if (asNum != null) return asNum.round();
+  return fallback;
+}
+
 Future<StickerPackStatus> getStickerPackStatus(StickerPacks pack) async {
   final isInstalled =
       await WhatsappStickersHandler().isStickerPackInstalled(pack.identifier!);
   final installedVersion =
       await WhatsappStickersHandler.getInstalledImageDataVersion(
           pack.identifier!);
-  final currentVersion = int.tryParse(pack.imageDataVersion ?? '0') ?? 0;
-  final hasUpdate = isInstalled && installedVersion != currentVersion;
+  final currentVersion = _parseVersionToInt(pack.imageDataVersion);
+  // Some installs can be whitelisted in WhatsApp but absent from local config metadata.
+  // In that case getInstalledImageDataVersion() returns 0 (unknown). Do not force the
+  // refresh badge for all packs; only show update when both sides are known.
+  final hasKnownInstalledVersion = installedVersion > 0;
+  final hasKnownCurrentVersion = currentVersion > 0;
+  final hasUpdate = isInstalled &&
+      hasKnownInstalledVersion &&
+      hasKnownCurrentVersion &&
+      installedVersion != currentVersion;
 
   return StickerPackStatus(
     isInstalled: isInstalled,
@@ -39,8 +58,13 @@ Future<StickerPackStatus> getUserPackStatus(UserPack pack) async {
       await WhatsappStickersHandler().isStickerPackInstalled(pack.id);
   final installedVersion =
       await WhatsappStickersHandler.getInstalledImageDataVersion(pack.id);
-  final currentVersion = int.tryParse(pack.packVersion ?? '1') ?? 1;
-  final hasUpdate = isInstalled && installedVersion != currentVersion;
+  final currentVersion = _parseVersionToInt(pack.packVersion, fallback: 1);
+  final hasKnownInstalledVersion = installedVersion > 0;
+  final hasKnownCurrentVersion = currentVersion > 0;
+  final hasUpdate = isInstalled &&
+      hasKnownInstalledVersion &&
+      hasKnownCurrentVersion &&
+      installedVersion != currentVersion;
 
   return StickerPackStatus(
     isInstalled: isInstalled,

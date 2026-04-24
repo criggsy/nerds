@@ -50,6 +50,7 @@ dependencies:
   image: ^4.8.0
   vector_math: ^2.1.4
   exif: ^3.3.0
+  gal: ^2.3.2
 
 dev_dependencies:
   flutter_test:
