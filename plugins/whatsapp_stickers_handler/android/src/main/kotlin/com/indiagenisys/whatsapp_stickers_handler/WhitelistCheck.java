@@ -27,14 +27,24 @@ class WhitelistCheck {
 
     static boolean isWhitelisted(@NonNull Context context, @NonNull String identifier) {
         try {
-            if (!isWhatsAppConsumerAppInstalled(context.getPackageManager()) && !isWhatsAppSmbAppInstalled(context.getPackageManager())) {
+            final boolean consumerInstalled = isWhatsAppConsumerAppInstalled(context.getPackageManager());
+            final boolean smbInstalled = isWhatsAppSmbAppInstalled(context.getPackageManager());
+            if (!consumerInstalled && !smbInstalled) {
                 return false;
             }
 
-            boolean consumerResult = isStickerPackWhitelistedInWhatsAppConsumer(context, identifier);
-            boolean smbResult = isStickerPackWhitelistedInWhatsAppSmb(context, identifier);
-            //Log.e("WHITELISTED", consumerResult + " " + smbResult);
-            return consumerResult && smbResult;
+            // A pack counts as installed if ANY installed WhatsApp variant has it
+            // whitelisted. (Previously `consumerResult && smbResult`, which required
+            // both apps installed AND the pack in both whitelists — so on a phone
+            // with WhatsApp + Business, installed packs were never detected and the
+            // "update available" path was dead.)
+            if (consumerInstalled && isStickerPackWhitelistedInWhatsAppConsumer(context, identifier)) {
+                return true;
+            }
+            if (smbInstalled && isStickerPackWhitelistedInWhatsAppSmb(context, identifier)) {
+                return true;
+            }
+            return false;
         } catch (Exception e) {
             return false;
         }
