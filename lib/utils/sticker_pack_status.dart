@@ -39,12 +39,16 @@ Future<StickerPackStatus> getStickerPackStatus(StickerPacks pack) async {
   // Some installs can be whitelisted in WhatsApp but absent from local config metadata.
   // In that case getInstalledImageDataVersion() returns 0 (unknown). Do not force the
   // refresh badge for all packs; only show update when both sides are known.
-  final hasKnownInstalledVersion = installedVersion > 0;
   final hasKnownCurrentVersion = currentVersion > 0;
+  // A missing/unknown local install record (0) means the app's own history is
+  // out of sync with what WhatsApp actually has (e.g. pack installed long ago,
+  // app data since reset, or record never written). Treat that as "update
+  // available" so the tap re-establishes the record and drives the real
+  // update handshake with WhatsApp. (Previously a 0 record force-hid the
+  // badge, so stale WhatsApp trays could never be refreshed.)
   final hasUpdate = isInstalled &&
-      hasKnownInstalledVersion &&
       hasKnownCurrentVersion &&
-      installedVersion != currentVersion;
+      (installedVersion <= 0 || installedVersion != currentVersion);
 
   return StickerPackStatus(
     isInstalled: isInstalled,
