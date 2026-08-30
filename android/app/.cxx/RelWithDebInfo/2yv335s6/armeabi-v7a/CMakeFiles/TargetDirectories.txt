@@ -1,2 +1,0 @@
-/home/crigs/GitHub/nerds/android/app/.cxx/RelWithDebInfo/2yv335s6/armeabi-v7a/CMakeFiles/edit_cache.dir
-/home/crigs/GitHub/nerds/android/app/.cxx/RelWithDebInfo/2yv335s6/armeabi-v7a/CMakeFiles/rebuild_cache.dir

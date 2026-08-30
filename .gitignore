@@ -1,7 +1,11 @@
 # Fluff
 REFACTORING_PLAN.md
 guides/
+PLAN.md
 
+# OS / junk
+.DS_Store
+._*
 
 # Flutter/Dart/Pub related
 .dart_tool/
@@ -13,7 +17,9 @@ build/
 .melpa
 # Android
 android/.gradle/
+android/app/.cxx/
 android/app/build/
+android/key.properties
 # iOS/macOS
 ios/Pods/
 ios/Flutter/Flutter.framework
