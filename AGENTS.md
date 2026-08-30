@@ -108,7 +108,23 @@ flutter test               # (no tests yet)
 dart format lib/
 ```
 
-Dart SDK constraint: `>=3.5.3 <4.0.0`. Flutter stable 3.47.x verified.
+Dart SDK constraint: `>=3.5.3 <4.0.0`.
+
+**Toolchain (both local and server `~/flutter`): pinned, do not build with older SDKs.**
+
+| Piece | Version | Where |
+|---|---|---|
+| Flutter | **3.47.2** (stable) | `~/flutter` locally and on `server` (server upgraded 2026-08 from 3.35.3) |
+| Gradle (wrapper) | **8.14.3** (`-all` app / `-bin` plugin) | `android/gradle/wrapper/gradle-wrapper.properties` + plugin copy. 8.14.0 404s on the distribution CDN — don't pin it. |
+| Android Gradle Plugin | **8.11.1** | `android/settings.gradle` (`com.android.application`) + plugin `android/build.gradle` buildscript classpath |
+| Kotlin (KGP) | **2.2.20** | `android/settings.gradle` + plugin `ext.kotlin_version` |
+
+Flutter 3.47's Gradle plugin hard-fails builds below these minimums (no
+"skip" flag worth using). If a server build fails with "X version is lower than
+Flutter's minimum supported version", bump the corresponding line above, commit
+locally, push, and re-check-out on the server before rebuilding.
+
+Android builds: `flutter build apk --release` → `build/app/outputs/flutter-apk/app-release.apk` (server).
 
 ## Conventions
 
