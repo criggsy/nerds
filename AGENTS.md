@@ -85,6 +85,19 @@ or WhatsApp won't refresh the pack in-app.
   (`encodeImageBytesToStickerWebP`, `encodeStickerBytesToTrayWebP`,
   `stickerWebpNeeds512SquareCanvas`, `trayWebpExceedsWhatsappLimits`)
 
+## Where things live (layout B)
+
+| What | Where | Role |
+|---|---|---|
+| `~/dev/nerds` (local machine, Omniarchy) | **this dir** | AI workbench: editing, `flutter analyze/test`, VS Code bridge. Flutter SDK at `~/flutter`. |
+| `github.com/criggsy/nerds` | remote | Source of truth / sync hub. Push here after each task. |
+| `~/GitHub/nerds` (server 192.168.0.210) | `ssh server` | Build/hosting copy: Android SDK + any device/emulator. Update with `git fetch origin && git checkout -B main origin/main` after pushing. |
+| `/mnt/server/GitHub/nerds` | CIFS mount | Dead archive — an old view of the server copy. Do NOT edit or develop here (CIFS: no symlinks/inotify breaks tooling). |
+| `sticker-updater` (server-side intake API, `https://stickers.crigs.io`) | `ssh server 'cd ~/GitHub/sticker-updater'` | Separate Python project, lives and runs on the server only. Not part of this repo. |
+
+Rules of thumb: develop and verify locally, push to GitHub, pull on the server only
+when building for Android or testing push-notifications.
+
 ## Common commands
 
 ```bash
@@ -111,15 +124,16 @@ Dart SDK constraint: `>=3.5.3 <4.0.0`. Flutter stable 3.47.x verified.
 
 ## Gotchas
 
-- **Never develop on the NAS mount** (`/mnt/server/GitHub/nerds` is CIFS):
-  it lacks symlink and inotify support, which breaks the Flutter tooling.
-  Develop only in `~/dev/nerds`.
+- **Never develop on the mount** (`/mnt/server/GitHub/...` is CIFS): no symlink/
+  inotify support breaks Flutter tooling. Local `~/dev/nerds` is the workbench
+  (layout B, see table above).
 - `google-services.json` (Android, Firebase) is committed; updating Firebase
   config requires touching `android/app/google-services.json`.
 - Push refresh goes through `StickersScreen.globalKey.currentState?.refreshStickerData()`
   (GlobalKey coupling — awkward but functional; don't widen it unnecessarily).
-- `sticker_packs/` at repo root is **seed/authoring content** for the server,
-  not loaded by the app at runtime.
+- `sticker_packs/` at repo root is **seed content** mirrored/staged by the
+  server-side `sticker-updater` project — it is not loaded by the app at
+  runtime, and the server's live manifest comes from `stickers.crigs.io`.
 - The local plugin must stay a path dependency (`plugins/whatsapp_stickers_handler`)
   in `pubspec.yaml`; `flutter pub get` generates the plugin symlinks.
 - `user_packs` metadata in SharedPreferences holds absolute paths — moving the
