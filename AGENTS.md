@@ -128,7 +128,7 @@ Dart SDK constraint: `>=3.5.3 <4.0.0`. Flutter stable 3.47.x verified.
 - No test suite exists yet. Verification = `flutter analyze` + running on an
   Android device/emulator for behavior changes.
 
-## Currently open/lint items
+## Verification
 
-- ~10 analyzer `info`s in the plugin (`use_super_parameters` in
-  `exceptions.dart`, etc.) — safe to batch-fix.
+No test suite exists yet. `flutter analyze` must stay free of issues;
+behavior changes are verified on an Android device/emulator.

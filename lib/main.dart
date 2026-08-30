@@ -101,6 +101,7 @@ class _MyAppState extends State<MyApp> {
       final ctx = navigatorKey.currentContext;
       if (ctx != null) {
         // Navigate to stickers screen using GoRouter
+        if (!ctx.mounted) return;
         GoRouter.of(ctx).go('/');
 
         // Store context for async operation
