@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:firebase_messaging/firebase_messaging.dart';
 import 'package:fluttertoast/fluttertoast.dart';
 import 'package:nerds/utils/logger.dart';
@@ -83,7 +84,7 @@ class _NotificationTestScreenState extends State<NotificationTestScreen> {
 
   void _copyTokenToClipboard() {
     if (_fcmToken != null) {
-      // In a real app, you'd use Clipboard.setData
+      Clipboard.setData(ClipboardData(text: _fcmToken!));
       log.i(
           "📋 FCM Token copied to clipboard: ${_fcmToken!.substring(0, 20)}...");
       Fluttertoast.showToast(
