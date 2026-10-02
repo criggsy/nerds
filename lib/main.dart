@@ -5,6 +5,8 @@ import 'package:nerds/screens/stickers_screen.dart';
 import 'package:firebase_core/firebase_core.dart';
 import 'package:firebase_messaging/firebase_messaging.dart';
 import 'package:nerds/utils/logger.dart';
+import 'package:nerds/services/foreground_notification_service.dart';
+
 import 'package:nerds/services/local_storage_service.dart';
 import 'package:nerds/services/server_sticker_cache_service.dart';
 import 'package:nerds/services/user_pack_service.dart';
@@ -53,6 +55,8 @@ void main() async {
     });
   }
 
+  await ForegroundNotificationService.instance.initialize();
+
   runApp(const MyApp());
 }
 
@@ -73,25 +77,12 @@ class _MyAppState extends State<MyApp> {
       log.i('🟢 Foreground notification: ${message.notification?.title}');
       StickersScreen.globalKey.currentState?.refreshStickerData();
 
-      if (message.notification != null && navigatorKey.currentContext != null) {
-        final context = navigatorKey.currentContext!;
-        Future.delayed(Duration.zero, () {
-          if (context.mounted) {
-            showDialog(
-              context: context,
-              builder: (dialogContext) => AlertDialog(
-                title: Text(message.notification!.title ?? 'Notification'),
-                content: Text(message.notification!.body ?? ''),
-                actions: [
-                  TextButton(
-                    child: const Text("OK"),
-                    onPressed: () => Navigator.of(dialogContext).pop(),
-                  )
-                ],
-              ),
-            );
-          }
-        });
+      // Render a real system notification (heads-up banner) instead of an
+      // in-app dialog, so the user sees it in every app state.
+      final notification = message.notification;
+      if (notification != null) {
+        unawaited(
+            ForegroundNotificationService.instance.show(message));
       }
     });
 
