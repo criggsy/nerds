@@ -85,20 +85,28 @@ or WhatsApp won't refresh the pack in-app.
   (`encodeImageBytesToStickerWebP`, `encodeStickerBytesToTrayWebP`,
   `stickerWebpNeeds512SquareCanvas`, `trayWebpExceedsWhatsappLimits`)
 
-## Where things live (layout B)
+## Where things live (layout A — server-first, since 2026-10-07)
+
+Server connection: `ssh -o BatchMode=yes crigs@192.168.0.210 '...'` (the Mac's SSH config alias is **capital-S `Server`** — do NOT use lowercase `server`: it misses the config block and the tailnet mDNS resolves that name to a different host that refuses SSH).
 
 | What | Where | Role |
 |---|---|---|
-| `~/dev/nerds` (local machine, Omniarchy) | **this dir** | AI workbench: editing, `flutter analyze/test`, VS Code bridge. Flutter SDK at `~/flutter`. |
-| `github.com/criggsy/nerds` | remote | Source of truth / sync hub. Push here after each task. |
-| `~/GitHub/nerds` (server 192.168.0.210) | `ssh server` | Build/hosting copy: Android SDK + any device/emulator. Update with `git fetch origin && git checkout -B main origin/main` after pushing. |
-| `/mnt/server/GitHub/nerds` | CIFS mount | Dead archive — an old view of the server copy. Do NOT edit or develop here (CIFS: no symlinks/inotify breaks tooling). |
-| `sticker-updater` (server-side intake API, `https://stickers.crigs.io`) | `ssh server 'cd ~/GitHub/sticker-updater'` | Separate Python project, lives and runs on the server only. Not part of this repo. |
+| `~/GitHub/nerds` (server 192.168.0.210) | **primary workbench** | Editing, `flutter analyze`/`test`, Android builds (`~/flutter` 3.47.x, `~/Android` SDK), device/emulator + FCM testing. |
+| `github.com/criggsy/nerds` | remote | Source of truth / sync hub. **Mac is the sole pusher** — the server has no GitHub creds. |
+| Local mirror (macbook-air `~/Documents/dev/nerds`; Omniarchy `~/dev/nerds`) | push relay / offline fallback | Not the development site. Sync from the server (repo + `.git`) then `git push origin main`: `rsync -az -e 'ssh -o BatchMode=yes' crigs@192.168.0.210:GitHub/nerds/ <local-mirror>/` |
+| `/mnt/server/GitHub/nerds` (Omniarchy only) | CIFS mount | Dead archive — an old view of the server copy. Do NOT edit or develop here (CIFS: no symlinks/inotify breaks tooling). |
+| `sticker-updater` (server-side intake API, `https://stickers.crigs.io`) | server `~/GitHub/sticker-updater` | Separate Python project, lives and runs on the server only. Not part of this repo. |
 
-Rules of thumb: develop and verify locally, push to GitHub, pull on the server only
-when building for Android or testing push-notifications.
+Flow for every task:
+1. **Server**: edit → `flutter analyze` → `flutter test` → (behavior changes: build/install on device or test FCM) → `git commit`.
+2. **Mac**: rsync the repo (incl. `.git`) off the server → `git push origin main` (verify the remote is an ancestor of the server HEAD first — `git fetch`, check `git log origin/main..main` makes sense).
+3. Resuming on a stale copy: clean tree → `git fetch origin && git checkout -B main origin/main`.
+
+Rules of thumb: develop, verify, and build on the server; GitHub is the checkpoint; the Mac is the only machine that pushes.
 
 ## Common commands
+
+Run on the **server** in `~/GitHub/nerds` (same commands work in the local mirrors).
 
 ```bash
 export PATH="$HOME/flutter/bin:$PATH"
@@ -110,19 +118,19 @@ dart format lib/
 
 Dart SDK constraint: `>=3.5.3 <4.0.0`.
 
-**Toolchain (both local and server `~/flutter`): pinned, do not build with older SDKs.**
+**Toolchain (server `~/flutter`; local mirrors must be ≥ this too): floor versions, do not build with older SDKs.**
 
 | Piece | Version | Where |
 |---|---|---|
-| Flutter | **3.47.2** (stable) | `~/flutter` locally and on `server` (server upgraded 2026-08 from 3.35.3) |
+| Flutter | **≥ 3.47.2** (stable) | server `~/flutter` is 3.47.2 (upgraded 2026-08 from 3.35.3); macbook-air `~/Documents/dev/flutter` is 3.47.6; Omniarchy `~/flutter` |
 | Gradle (wrapper) | **8.14.3** (`-all` app / `-bin` plugin) | `android/gradle/wrapper/gradle-wrapper.properties` + plugin copy. 8.14.0 404s on the distribution CDN — don't pin it. |
 | Android Gradle Plugin | **8.11.1** | `android/settings.gradle` (`com.android.application`) + plugin `android/build.gradle` buildscript classpath |
 | Kotlin (KGP) | **2.2.20** | `android/settings.gradle` + plugin `ext.kotlin_version` |
 
 Flutter 3.47's Gradle plugin hard-fails builds below these minimums (no
-"skip" flag worth using). If a server build fails with "X version is lower than
-Flutter's minimum supported version", bump the corresponding line above, commit
-locally, push, and re-check-out on the server before rebuilding.
+"skip" flag worth using). If a build fails with "X version is lower than
+Flutter's minimum supported version", bump the corresponding line above, commit,
+and push via the Mac (the server has no GitHub creds).
 
 Android builds: `flutter build apk --release` → `build/app/outputs/flutter-apk/app-release.apk` (server).
 
@@ -141,8 +149,8 @@ Android builds: `flutter build apk --release` → `build/app/outputs/flutter-apk
 ## Gotchas
 
 - **Never develop on the mount** (`/mnt/server/GitHub/...` is CIFS): no symlink/
-  inotify support breaks Flutter tooling. Local `~/dev/nerds` is the workbench
-  (layout B, see table above).
+  inotify support breaks Flutter tooling. The server-native `~/GitHub/nerds` is the
+  workbench (see "Where things live").
 - `google-services.json` (Android, Firebase) is committed; updating Firebase
   config requires touching `android/app/google-services.json`.
 - Push refresh goes through `StickersScreen.globalKey.currentState?.refreshStickerData()`
