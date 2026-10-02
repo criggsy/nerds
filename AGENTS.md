@@ -85,24 +85,25 @@ or WhatsApp won't refresh the pack in-app.
   (`encodeImageBytesToStickerWebP`, `encodeStickerBytesToTrayWebP`,
   `stickerWebpNeeds512SquareCanvas`, `trayWebpExceedsWhatsappLimits`)
 
-## Where things live (layout A — server-first, since 2026-10-07)
+## Where things live (layout A — server-first, since 2026-10-07; server pushes to GitHub, dev machines pull, since 2026-10-25)
 
 Server connection: `ssh -o BatchMode=yes crigs@192.168.0.210 '...'` (the Mac's SSH config alias is **capital-S `Server`** — do NOT use lowercase `server`: it misses the config block and the tailnet mDNS resolves that name to a different host that refuses SSH).
 
 | What | Where | Role |
 |---|---|---|
 | `~/GitHub/nerds` (server 192.168.0.210) | **primary workbench** | Editing, `flutter analyze`/`test`, Android builds (`~/flutter` 3.47.x, `~/Android` SDK), device/emulator + FCM testing. |
-| `github.com/criggsy/nerds` | remote | Source of truth / sync hub. **Mac is the sole pusher** — the server has no GitHub creds. |
-| Local mirror (macbook-air `~/Documents/dev/nerds`; Omniarchy `~/dev/nerds`) | push relay / offline fallback | Not the development site. Sync from the server (repo + `.git`) then `git push origin main`: `rsync -az -e 'ssh -o BatchMode=yes' crigs@192.168.0.210:GitHub/nerds/ <local-mirror>/` |
+| `github.com/criggsy/nerds` | remote | Source of truth / sync hub. **The server is the sole pusher** (has a GitHub SSH key `ubuntu-server-192.168.0-210`); dev machines are pull-only. |
+| Local mirror (macbook-air `~/Documents/dev/nerds`; Omniarchy Desktop `~/dev/nerds`) | offline fallback / secondary editing | Not the primary development site. Sync by pulling from GitHub: `git fetch origin && git checkout -B main origin/main` (after a clean tree). |
 | `/mnt/server/GitHub/nerds` (Omniarchy only) | CIFS mount | Dead archive — an old view of the server copy. Do NOT edit or develop here (CIFS: no symlinks/inotify breaks tooling). |
 | `sticker-updater` (server-side intake API, `https://stickers.crigs.io`) | server `~/GitHub/sticker-updater` | Separate Python project, lives and runs on the server only. Not part of this repo. |
 
 Flow for every task:
-1. **Server**: edit → `flutter analyze` → `flutter test` → (behavior changes: build/install on device or test FCM) → `git commit`.
-2. **Mac**: rsync the repo (incl. `.git`) off the server → `git push origin main` (verify the remote is an ancestor of the server HEAD first — `git fetch`, check `git log origin/main..main` makes sense).
-3. Resuming on a stale copy: clean tree → `git fetch origin && git checkout -B main origin/main`.
+1. **Server**: edit → `flutter analyze` → `flutter test` → (behavior changes: build/install on device or test FCM) → `git commit` → `git push origin main`.
+2. **Dev machine** (Mac or Omniarchy Desktop): `git pull` (fast-forward from GitHub) whenever you need the latest. To resume on a stale copy: clean tree → `git fetch origin && git checkout -B main origin/main`.
 
-Rules of thumb: develop, verify, and build on the server; GitHub is the checkpoint; the Mac is the only machine that pushes.
+Rules of thumb: develop, verify, build, and **push** on the server (it holds the GitHub SSH key); GitHub is the checkpoint; the Mac and Omniarchy Desktop are **pull-only** and must never push.
+
+**GitHub auth on the server**: SSH, via `~/.ssh/id_ed25519_github` (comment `ubuntu-server-192.168.0-210`, registered as an account SSH key on `criggsy`). `~/.ssh/config` has a `Host github.com` block that pins `IdentityFile ~/.ssh/id_ed25519_github` + `IdentitiesOnly yes`. The repo `origin` is `git@github.com:criggsy/nerds.git`. If auth breaks: `ssh -T git@github.com` should print `Hi criggsy!`.
 
 ## Common commands
 
@@ -130,7 +131,7 @@ Dart SDK constraint: `>=3.5.3 <4.0.0`.
 Flutter 3.47's Gradle plugin hard-fails builds below these minimums (no
 "skip" flag worth using). If a build fails with "X version is lower than
 Flutter's minimum supported version", bump the corresponding line above, commit,
-and push via the Mac (the server has no GitHub creds).
+and push from the server (it is the sole pusher — see "Where things live").
 
 Android builds: `flutter build apk --release` → `build/app/outputs/flutter-apk/app-release.apk` (server).
 
